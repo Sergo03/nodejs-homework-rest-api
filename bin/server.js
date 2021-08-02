@@ -7,6 +7,7 @@ const { DB_HOST } = process.env;
 const PORT = process.env.PORT || 3000
 
 mongoose.connect(DB_HOST, {
+  useCreateIndex: true,
   useNewUrlParser: true,
   useUnifiedTopology: true,
   useFindAndModify: false 

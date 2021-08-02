@@ -3,7 +3,8 @@ const router = express.Router();
 const User = require('../../model');
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
-const {schemaSignupValidate} = require('../../utils/validate/schemas/Schema');
+const { schemaSignupValidate } = require('../../utils/validate/schemas/Schema');
+const authenticate = require('../../middlewares/authenticate');
 
 router.post('/signup', async (req, res, next) => {
     const {email,password}=req.body
@@ -72,7 +73,7 @@ router.post('/login', async (req, res, next) => {
             id: user._id
         };
         const token = jwt.sign(payload, SECRET_KEY);
-        const resualt = await User.updateById(user._id, { token })
+        const result = await User.updateById(user._id, { token })
         
         return res.status(200).json({
             Status: '200 OK',
@@ -80,8 +81,8 @@ router.post('/login', async (req, res, next) => {
             'ResponseBody': {
                 "token": token,
                 "user": {
-                    "email": resualt.email,
-                    "subscription": resualt.subscription
+                    "email": result.email,
+                    "subscription": result.subscription
                 }
             }
         });
@@ -90,5 +91,45 @@ router.post('/login', async (req, res, next) => {
         next(error)
     }
 })
+
+router.post('/logout', authenticate, async (req, res, next) => {
+    try {
+        const result= await User.updateById(req.user._id, { token: null });
+        if (!result) {
+            return res.status(401).json({
+                Status: '401 Unauthorized',
+                'Content-Type': 'application/json',
+                'ResponseBody': {
+                    "message": "Not authorized"
+                }
+            });
+        }
+        return res.status(204).json({
+            Status: '204 No Content',
+            code: 204,
+            'message': 'Logout success'
+        })
+
+    } catch (error) {
+        next(error)
+    }
+});
+
+router.post('/current', authenticate, async (req, res, next) => {
+    try {
+        res.status(200).json({
+            Status: '200 OK',
+            'Content-Type': 'application / json',
+            'ResponseBody': {
+                "email": req.user.email,
+                "subscription": req.user.subscription
+            }
+        });
+        
+    } catch (error) {
+        next(error)
+    }
+})
+
 
 module.exports = router

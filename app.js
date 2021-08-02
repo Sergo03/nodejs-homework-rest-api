@@ -8,6 +8,8 @@ const userRouter = require('./routes/api/user');
 
 const app = express()
 
+require('./configs/passport-config');
+
 const formatsLogger = app.get('env') === 'development' ? 'dev' : 'short'
 
 app.use(logger(formatsLogger))
