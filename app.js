@@ -6,9 +6,8 @@ const path = require("path");
 const fs = require("fs/promises");
 const jimp=require('jimp')
 require("dotenv").config();
-
-
-
+const authenticate = require('./middlewares/authenticate')
+const User = require('./model');
 
 const contactsRouter = require('./routes/api/contacts');
 const userRouter = require('./routes/api/user');
@@ -49,34 +48,38 @@ const uploadMiddleware = multer({
     storage
 });
 
-app.patch('/api/users/avatars', uploadMiddleware.single("avatar"), async(req, res, next)=> {
+app.patch('/api/users/avatars', authenticate, uploadMiddleware.single('avatar'), async (req, res, next) => {
   const { path: tempName, originalname } = req.file;
-  const resizeAvatar = jimp.read(tempName)
-    .then(img => {
-      img.resize(250, 250)
-    })
-    .catch(error => {
-      console.log(error);
-    });
   const now = moment().format("YYYY-MM-DD_hh-mm-ss");
-
   const fileName = `${now}_${originalname}`;
-  try {
-    const fullFileName = path.join(uploadDir, fileName);
-    await fs.rename(tempName, fullFileName)
-    const result = {
-      _id: req.body.name,
-      image:fileName
-    }
-    res.status(200).json({
-      
-    })
-  } catch (error) {
-    
-  }
- 
+  const avatarURL = `${req.headers.host}/avatars/${fileName}`
+  const fullFileName = path.join(uploadDir, fileName);
 
-})
+  try {
+    await fs.rename(tempName, fullFileName);
+    
+    jimp.read(fullFileName)
+      .then(img => {
+        return img.resize(250, 250)
+          .writeAsync(fullFileName)
+      })
+      .catch(error => {
+        console.log(error);
+      });
+     
+    const updateInfo = await User.updateById(req.user._id, { avatarURL: avatarURL })
+    
+    res.status(200).json({
+      Status: '200 OK',
+      'Content-Type': 'application / json',
+      'ResponseBody': {
+        "avatarURL": updateInfo.avatarURL
+      }
+    });
+  } catch (error) {
+    await fs.unlink(tempName);
+  }
+});
 
 
 

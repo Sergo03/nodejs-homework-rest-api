@@ -36,13 +36,14 @@ router.post('/signup', async (req, res, next) => {
         const avatarURL = gravatar.url(newUser.email,{protocol:'http'})
         
         const updateInfo = await User.updateById(newUser._id, { avatarURL })
+        
         res.status(201).json({
             Status: '201 Created',
             'Content-Type': 'application / json',
             'ResponseBody': {
                 "user": {
                     "email": newUser.email,
-                    "subscription": newUser.subscriprtion
+                    "subscription": newUser.subscription
                 }
             }
         });
