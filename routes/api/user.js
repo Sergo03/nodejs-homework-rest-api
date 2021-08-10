@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../../model');
 const jwt = require("jsonwebtoken");
+const gravatar = require('gravatar')
 require("dotenv").config();
 const { schemaSignupValidate } = require('../../utils/validate/schemas/Schema');
 const authenticate = require('../../middlewares/authenticate');
@@ -30,14 +31,19 @@ router.post('/signup', async (req, res, next) => {
             });
         }
        
-        await User.add({email, password});
+        const newUser = await User.add({ email, password });
+
+        const avatarURL = gravatar.url(newUser.email,{protocol:'http'})
+        
+        const updateInfo = await User.updateById(newUser._id, { avatarURL })
+        
         res.status(201).json({
             Status: '201 Created',
             'Content-Type': 'application / json',
             'ResponseBody': {
                 "user": {
-                    "email": "example@example.com",
-                    "subscription": "starter"
+                    "email": newUser.email,
+                    "subscription": newUser.subscription
                 }
             }
         });

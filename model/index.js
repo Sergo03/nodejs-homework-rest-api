@@ -53,8 +53,9 @@ const add = ({ email, password }) => {
 
 const getById = (id) => User.findById(id);
 
-const updateById = (id, updateInfo) => {
-    return User.findByIdAndUpdate(id, updateInfo)
+const updateById = async (id, updateInfo) => {
+  const result = await User.findByIdAndUpdate(id, updateInfo,{new:true});
+  return result;
 }
 
 module.exports = {
