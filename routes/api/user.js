@@ -6,6 +6,7 @@ const gravatar = require('gravatar')
 require("dotenv").config();
 const { schemaSignupValidate } = require('../../utils/validate/schemas/Schema');
 const authenticate = require('../../middlewares/authenticate');
+const { findOneAndUpdate } = require('../../model/contact');
 
 router.post('/signup', async (req, res, next) => {
     const {email,password}=req.body
@@ -133,6 +134,32 @@ router.post('/current', authenticate, async (req, res, next) => {
         });
         
     } catch (error) {
+        next(error)
+    }
+})
+router.get('/verify/:verificationToken', async (req, res, next) => {
+   
+    const { verificationToken } = req.params;
+    
+    try {
+        const user = await User.getOne({ verificationToken })
+        if (!user) {
+            return res.status(404).json({
+                Status: '404 Not found',
+                'ResponseBody': {
+                    'message': 'User not found'
+                }
+            })
+        }
+        const result = await User.findOneAndUpdate(user._id,{verificationToken:null, verify:true})
+        return res.status(200).json({
+            Status: '200 OK',
+            'ResponseBody': {
+                'message': 'Verification successful'
+            }
+        });
+        
+    } catch(error) {
         next(error)
     }
 })
