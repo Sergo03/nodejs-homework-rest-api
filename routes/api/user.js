@@ -3,10 +3,13 @@ const router = express.Router();
 const User = require('../../model');
 const jwt = require("jsonwebtoken");
 const gravatar = require('gravatar')
+const { v4 } = require('uuid');
 require("dotenv").config();
-const { schemaSignupValidate } = require('../../utils/validate/schemas/Schema');
+const { schemaSignupValidate,schemaVerifyValidate } = require('../../utils/validate/schemas/Schema');
 const authenticate = require('../../middlewares/authenticate');
 const { findOneAndUpdate } = require('../../model/contact');
+const sendMail = require('../../utils/sendMail');
+
 
 router.post('/signup', async (req, res, next) => {
     const {email,password}=req.body
@@ -31,13 +34,20 @@ router.post('/signup', async (req, res, next) => {
                 }
             });
         }
-       
-        const newUser = await User.add({ email, password });
-
+        const verifyToken = v4()
+        
+        const newUser = await User.add({ email, password, verifyToken });
+        
+        const mail = {
+            to: email,
+            subject: 'Подтвердите свой email',
+            text:`http://localhost:3000/api/users/verify/${verifyToken} ссылка для подтверждения email`
+        }
+        
         const avatarURL = gravatar.url(newUser.email,{protocol:'http'})
         
         const updateInfo = await User.updateById(newUser._id, { avatarURL })
-        
+        await sendMail(mail);
         res.status(201).json({
             Status: '201 Created',
             'Content-Type': 'application / json',
@@ -67,7 +77,8 @@ router.post('/login', async (req, res, next) => {
             });
         }
         const user = await User.getOne({ email })
-        if (!user || !user.comparePassword(password)) {
+        
+        if  (!user || !user.comparePassword(password) ) {
             return res.status(401).json({
                 Status: '401 Unauthorized',
                 'ResponseBody': {
@@ -75,6 +86,15 @@ router.post('/login', async (req, res, next) => {
                 }
             });
         }
+        if (!user.verify) {
+            return res.status(401).json({
+                Status: '401 Unauthorized',
+                'ResponseBody': {
+                    "message": "User is not verification"
+                }
+            })
+        }
+         
         const { SECRET_KEY } = process.env;
         const payload = {
             id: user._id
@@ -137,12 +157,12 @@ router.post('/current', authenticate, async (req, res, next) => {
         next(error)
     }
 })
-router.get('/verify/:verificationToken', async (req, res, next) => {
+router.get('/verify/:verifyToken', async (req, res, next) => {
    
-    const { verificationToken } = req.params;
+    const { verifyToken } = req.params;
     
     try {
-        const user = await User.getOne({ verificationToken })
+        const user = await User.getOne({ verifyToken })
         if (!user) {
             return res.status(404).json({
                 Status: '404 Not found',
@@ -151,7 +171,8 @@ router.get('/verify/:verificationToken', async (req, res, next) => {
                 }
             })
         }
-        const result = await User.findOneAndUpdate(user._id,{verificationToken:null, verify:true})
+
+        const result = await User.updateById(user._id,{verifyToken:null, verify:true})
         return res.status(200).json({
             Status: '200 OK',
             'ResponseBody': {
@@ -160,6 +181,51 @@ router.get('/verify/:verificationToken', async (req, res, next) => {
         });
         
     } catch(error) {
+        next(error)
+    }
+})
+
+router.post('/verify', async (req, res, next) => {
+    const { email } = req.body;
+     
+    try {
+        const { error } = schemaVerifyValidate.validate({email});
+        if (error) {
+            return res.status(400).json({
+                Status: '400 Bad Request',
+                'Content-Type': 'application / json',
+                'ResponseBody': 'Ошибка от Joi или другой библиотеки валидации'
+            });
+        }
+       
+        const user = await User.getOne({ email });
+        const mail = {
+            to: email,
+            subject: 'Подтвердите свой email',
+            text:`http://localhost:3000/api/users/verify/${user.verifyToken} ссылка для подтверждения email`
+        }
+        if (!user.verify) {
+            await sendMail(mail);
+            return res.status(200).json({
+                Status: '200 Ok',
+                'Content-Type': 'application/json',
+                'ResponseBody': {
+                    "message": "Verification email sent"
+                }
+            });
+        }
+          
+        return res.status(400).json({
+            Status: '400 Bad Request',
+            'Content-Type': 'application/json',
+            'ResponseBody': {
+                message: "Verification has already been passed"
+            }
+        });
+         
+        
+        
+    } catch (error) {
         next(error)
     }
 })

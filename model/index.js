@@ -45,8 +45,8 @@ const getOne = (filter) => {
   return User.findOne(filter)
 }
 
-const add = ({ email, password }) => {
-  const newUser = new User({ email });
+const add = ({ email, password,verifyToken}) => {
+  const newUser = new User({ email,verifyToken });
   newUser.setPassword(password);
   return newUser.save();
 }
