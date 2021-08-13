@@ -16,9 +16,13 @@ const schemaSignupValidate = Joi.object({
     email: Joi.string().email().required(),
     password:Joi.string().min(8).required()
 })
+const schemaVerifyValidate = Joi.object({
+    email:Joi.string().email().required()
+})
 
 module.exports = {
     schemaAddContacts,
     schemaUpdateContact,
-    schemaSignupValidate
+    schemaSignupValidate,
+    schemaVerifyValidate
 }
